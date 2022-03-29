@@ -85,7 +85,7 @@ uint64
 cal_freemem(void)
 {
   struct run *r = kmem.freelist;
-  // char *start_addr = (char *)r;
+  char *start_addr = (char *)r;
   uint64 res = 0;
   while (r)
   {

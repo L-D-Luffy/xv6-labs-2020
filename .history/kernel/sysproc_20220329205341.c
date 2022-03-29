@@ -22,18 +22,11 @@ sys_trace(void)
 uint64
 sys_sysinfo(void)
 {
-  struct proc *p = myproc();
-  uint64 addr; // user pointer to struct sysinfo
-  if (argaddr(0, &addr) < 0)
+  uint st; // user pointer to struct sysinfo
+  if (argaddr(0, &st) < 0)
     return -1;
   struct sysinfo st_info;
-  st_info.freemem = cal_freemem();
-  st_info.nproc = state_not_unused_nums();
 
-  // 从内核往用户写回数据
-  if (copyout(p->pagetable, addr, (char *)&st_info, sizeof(st_info)) < 0)
-    return -1;
-  return 0;
   
 }
 

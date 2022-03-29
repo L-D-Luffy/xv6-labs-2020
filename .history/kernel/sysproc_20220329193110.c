@@ -6,7 +6,6 @@
 #include "memlayout.h"
 #include "spinlock.h"
 #include "proc.h"
-#include "sysinfo.h"
 
 uint64
 sys_trace(void)
@@ -17,24 +16,6 @@ sys_trace(void)
   struct proc *p = myproc();
   p->mask = mask;
   return 0;
-}
-
-uint64
-sys_sysinfo(void)
-{
-  struct proc *p = myproc();
-  uint64 addr; // user pointer to struct sysinfo
-  if (argaddr(0, &addr) < 0)
-    return -1;
-  struct sysinfo st_info;
-  st_info.freemem = cal_freemem();
-  st_info.nproc = state_not_unused_nums();
-
-  // 从内核往用户写回数据
-  if (copyout(p->pagetable, addr, (char *)&st_info, sizeof(st_info)) < 0)
-    return -1;
-  return 0;
-  
 }
 
 uint64

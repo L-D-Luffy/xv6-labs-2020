@@ -23,7 +23,7 @@ uint64
 sys_sysinfo(void)
 {
   struct proc *p = myproc();
-  uint64 addr; // user pointer to struct sysinfo
+  uint addr; // user pointer to struct sysinfo
   if (argaddr(0, &addr) < 0)
     return -1;
   struct sysinfo st_info;

@@ -85,21 +85,6 @@ allocpid() {
   return pid;
 }
 
-// 计算state字段不为UNUSED的进程数量
-uint64
-state_not_unused_nums(void)
-{
-  struct proc *p;
-  uint64 res = 0;
-  for (p = proc; p < &proc[NPROC]; p++)
-  {
-    acquire(&p->lock);
-    if (p->state != UNUSED) res++;
-    release(&p->lock);
-  }
-  return res;
-}
-
 // Look in the process table for an UNUSED proc.
 // If found, initialize state required to run in the kernel,
 // and return with p->lock held.
