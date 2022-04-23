@@ -331,9 +331,8 @@ fork(void)
   // Cause fork to return 0 in the child.
   np->trapframe->a0 = 0;
 
-  /**********lab3 pgtb**********/
+  //
   utkmmap(np->ukpagetable, np->pagetable, 0, p->sz);
-  /**********lab3 pgtb end**********/
   // utkmmap(np->ukpagetable, np->pagetable, 0, PGSIZE);
 
   // increment reference counts on open file descriptors.
