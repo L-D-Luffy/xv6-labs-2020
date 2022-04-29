@@ -56,7 +56,7 @@ usertrap(void)
     if(p->killed)
       exit(-1);
 
-    // sepc points to  the ecall instruction,
+    // sepc points to the ecall instruction,
     // but we want to return to the next instruction.
     p->trapframe->epc += 4;
 
