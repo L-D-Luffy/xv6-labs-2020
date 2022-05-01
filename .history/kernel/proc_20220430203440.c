@@ -120,8 +120,7 @@ found:
 
   p->nticks = 0;
   p->interval = 0;
-  p->alarmhandler = 0;
-  /*************************/
+
   // An empty user page table.
   p->pagetable = proc_pagetable(p);
   if(p->pagetable == 0){

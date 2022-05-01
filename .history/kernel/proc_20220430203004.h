@@ -107,5 +107,4 @@ struct proc {
   struct trapframe *altrapframe;
   int interval;
   int nticks;
-  uint64 alarmhandler;
 };

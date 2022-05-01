@@ -51,31 +51,18 @@ fdalloc(struct file *f)
   }
   return -1;
 }
-
-/****************lab 4*****************/
-uint64 
-sys_sigreturn(void)
-{
-  struct proc *p = myproc();
-  *(p->trapframe) = *(p->altrapframe);
-  p->nticks = 0;
-  intr_on();
-  return 0;
-}
-
 uint64 
 sys_sigalarm(void)
 {
-  int n;
-  uint64 addr;
-  if(argint(0, &n) < 0 || argaddr(1, &addr) < 0)
-    return -1;
-  struct proc *p = myproc();
-  p->interval = n;
-  p->alarmhandler = addr;
-  return 0;
+  
 }
-/**********************/
+
+uint64 
+sys_sigreturn(void)
+{
+
+}
+
 uint64
 sys_dup(void)
 {

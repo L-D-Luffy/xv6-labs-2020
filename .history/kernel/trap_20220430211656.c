@@ -77,7 +77,6 @@ usertrap(void)
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  /****************lab 4*******************/
   if(which_dev == 2){
     if(p->interval != 0){
       p->nticks += 1;
@@ -87,7 +86,7 @@ usertrap(void)
         p->trapframe->epc = p->alarmhandler;
       }
     }
-  /********************/
+
     yield();
   }
 

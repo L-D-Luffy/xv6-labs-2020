@@ -130,7 +130,7 @@ backtrace()
     printf("%p\n", readdr);
   }
 
-  // printf("%p\n", *((uint64 *)(fp - 8)));
+  printf("%p\n", *((uint64 *)(fp - 8)));
 }
 
 void

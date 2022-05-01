@@ -59,8 +59,6 @@ printptr(uint64 x)
     consputc(digits[x >> (sizeof(uint64) * 8 - 4)]);
 }
 
-
-
 // Print to the console. only understands %d, %x, %p, %s.
 void
 printf(char *fmt, ...)
@@ -114,23 +112,6 @@ printf(char *fmt, ...)
 
   if(locking)
     release(&pr.lock);
-}
-
-void
-backtrace()
-{
-  uint64 fp = r_fp();
-
-  uint64 stacktop = PGROUNDUP(fp);
-
-  while (fp != stacktop)
-  {
-    uint64 readdr = *((uint64 *)(fp - 8));
-    fp = *((uint64 *)(fp - 16));
-    printf("%p\n", readdr);
-  }
-
-  // printf("%p\n", *((uint64 *)(fp - 8)));
 }
 
 void

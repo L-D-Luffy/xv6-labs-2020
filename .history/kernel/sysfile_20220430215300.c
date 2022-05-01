@@ -51,8 +51,6 @@ fdalloc(struct file *f)
   }
   return -1;
 }
-
-/****************lab 4*****************/
 uint64 
 sys_sigreturn(void)
 {
@@ -75,7 +73,7 @@ sys_sigalarm(void)
   p->alarmhandler = addr;
   return 0;
 }
-/**********************/
+
 uint64
 sys_dup(void)
 {
