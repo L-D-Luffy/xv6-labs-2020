@@ -370,7 +370,7 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
     if(pa0 == 0){
       struct proc *p = myproc();
       if (dstva >= p->sz || dstva < p->trapframe->sp){
-        // p->killed = 1;
+        p->killed = 1;
         return -1;
       } else {
         // pte_t *pte = walk(pagetable, va0, 0);

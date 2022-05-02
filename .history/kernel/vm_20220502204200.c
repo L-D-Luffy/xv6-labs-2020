@@ -379,7 +379,7 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
           struct proc *p = myproc();
           if ((mem = (uint64)kalloc()) == 0){
             p->killed = 1;
-            return -1;
+            //return -1;
           } else {
             pa0 = mem;
             memset((void *)mem, 0, PGSIZE);
@@ -387,7 +387,7 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
             if (mappages(p->pagetable, va0, PGSIZE, (uint64)mem, PTE_W|PTE_R|PTE_U) != 0){
               kfree((void *)mem);
               p->killed = 1;
-              return -1;
+              //return -1;
             }
           }
         // } else {
@@ -432,7 +432,7 @@ copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
           struct proc *p = myproc();
           if ((mem = (uint64)kalloc()) == 0){
             p->killed = 1;
-            return -1;
+            //return -1;
           } else {
             pa0 = mem;
             memset((void *)mem, 0, PGSIZE);
@@ -440,7 +440,7 @@ copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
             if (mappages(p->pagetable, va0, PGSIZE, (uint64)mem, PTE_W|PTE_R|PTE_U) != 0){
               kfree((void *)mem);
               p->killed = 1;
-              return -1;
+              //return -1;
             }
           }
         // } else {

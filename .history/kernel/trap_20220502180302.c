@@ -70,7 +70,7 @@ usertrap(void)
   } else if (r_scause() == 15 || r_scause() == 13){
     // 对于缺页异常,就为该虚拟地址对应的页分配一个物理页并建立映射
     uint64 va = r_stval();
-    //printf("page fault %p\n", va);
+    printf("page fault %p\n", va);
     if (va >= p->sz || va < p->trapframe->sp){
       p->killed = 1;
     } else {

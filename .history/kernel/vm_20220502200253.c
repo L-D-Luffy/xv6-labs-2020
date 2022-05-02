@@ -370,7 +370,7 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
     if(pa0 == 0){
       struct proc *p = myproc();
       if (dstva >= p->sz || dstva < p->trapframe->sp){
-        // p->killed = 1;
+        p->killed = 1;
         return -1;
       } else {
         // pte_t *pte = walk(pagetable, va0, 0);
@@ -416,14 +416,14 @@ int
 copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
 {
   uint64 n, va0, pa0;
-  struct proc *p = myproc();
+
   while(len > 0){
     va0 = PGROUNDDOWN(srcva);
     pa0 = walkaddr(pagetable, va0);
     if(pa0 == 0){
-      
+      struct proc *p = myproc();
       if (srcva >= p->sz || srcva < p->trapframe->sp){
-        //p->killed = 1;
+        p->killed = 1;
         return -1;
       } else {
         // pte_t *pte = walk(pagetable, va0, 0);

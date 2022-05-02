@@ -67,27 +67,18 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
-  } else if (r_scause() == 15 || r_scause() == 13){
+  } else if (r_scause() == 15){
     // 对于缺页异常,就为该虚拟地址对应的页分配一个物理页并建立映射
-    uint64 va = r_stval();
-    //printf("page fault %p\n", va);
-    if (va >= p->sz || va < p->trapframe->sp){
+    char *mem;
+    if ((mem = kalloc()) == 0){
       p->killed = 1;
     } else {
-      uint64 mem;
-      mem = (uint64)kalloc();
-      if (mem == 0){
-        printf("physical mem out!\n");
-        p->killed = 1;
-      } else {
-        va = PGROUNDDOWN(va);
-        memset((void *)mem, 0, PGSIZE);
-        // printf("this is %p\n", r_stval());
-        if (mappages(p->pagetable, va, PGSIZE, (uint64)mem, PTE_W|PTE_R|PTE_U) != 0){
-          kfree((void *)mem);
-          p->killed = 1;
-        }
-      }
+    memset(mem, 0, PGSIZE);
+    uint64 va = PGROUNDDOWN(r_stval());
+    if (mappages(p->pagetable, va, PGSIZE, (uint64)mem, PTE_W|PTE_R|PTE_U) != 0){
+      // kfree(mem);
+      p->killed = 1;
+    }
     }
   } else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
@@ -174,8 +165,6 @@ kerneltrap()
   // give up the CPU if this is a timer interrupt.
   if(which_dev == 2 && myproc() != 0 && myproc()->state == RUNNING)
     yield();
-  
-
 
   // the yield() may have caused some traps to occur,
   // so restore trap registers for use by kernelvec.S's sepc instruction.

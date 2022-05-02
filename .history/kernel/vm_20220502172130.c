@@ -74,8 +74,7 @@ pte_t *
 walk(pagetable_t pagetable, uint64 va, int alloc)
 {
   if(va >= MAXVA)
-    //panic("walk");
-    ;
+    panic("walk");
 
   for(int level = 2; level > 0; level--) {
     pte_t *pte = &pagetable[PX(level, va)];
@@ -289,7 +288,7 @@ freewalk(pagetable_t pagetable)
       freewalk((pagetable_t)child);
       pagetable[i] = 0;
     } else if(pte & PTE_V){
-      //panic("freewalk: leaf");
+      // panic("freewalk: leaf");
     }
   }
   kfree((void*)pagetable);
@@ -369,8 +368,8 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
     pa0 = walkaddr(pagetable, va0);
     if(pa0 == 0){
       struct proc *p = myproc();
-      if (dstva >= p->sz || dstva < p->trapframe->sp){
-        // p->killed = 1;
+      if (dstva > p->sz || dstva < p->trapframe->sp || dstva >= MAXVA){
+        p->killed = 1;
         return -1;
       } else {
         // pte_t *pte = walk(pagetable, va0, 0);
@@ -416,14 +415,14 @@ int
 copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
 {
   uint64 n, va0, pa0;
-  struct proc *p = myproc();
+
   while(len > 0){
     va0 = PGROUNDDOWN(srcva);
     pa0 = walkaddr(pagetable, va0);
     if(pa0 == 0){
-      
-      if (srcva >= p->sz || srcva < p->trapframe->sp){
-        //p->killed = 1;
+      struct proc *p = myproc();
+      if (srcva > p->sz || srcva < p->trapframe->sp || srcva >= MAXVA){
+        p->killed = 1;
         return -1;
       } else {
         // pte_t *pte = walk(pagetable, va0, 0);
@@ -432,7 +431,7 @@ copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
           struct proc *p = myproc();
           if ((mem = (uint64)kalloc()) == 0){
             p->killed = 1;
-            return -1;
+            //return -1;
           } else {
             pa0 = mem;
             memset((void *)mem, 0, PGSIZE);
