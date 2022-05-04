@@ -191,14 +191,12 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
     if(PTE_FLAGS(*pte) == PTE_V)
       panic("uvmunmap: not a leaf");
     uint64 pa = PTE2PA((*pte));
-    
+    bkeeping[PA2BKI(pa)] --;
     // if(bkeeping[PA2BKI(pa)] == 0) kfree((void *)pa);
     if(do_free){
-      // bkeeping[PA2BKI(pa)] --;
-      // if(bkeeping[PA2BKI(pa)] == 0){
-      //   kfree((void *)pa);
-      // }
-      bksubone(pa);
+      if(bkeeping[PA2BKI(pa)] == 0){
+        kfree((void *)pa);
+      }
     } 
     // else{
     //   if((bkeeping[PA2BKI(pa)] == 0) && (*pte & PTE_RSW)){
@@ -356,8 +354,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     }
     //printf("no here\n");
     // 映射成功了就添加引用计数
-    //bkeeping[PA2BKI(pa)] ++;
-    bkaddone(pa);
+    bkeeping[PA2BKI(pa)] ++;
   }
   return 0;
 
@@ -418,12 +415,10 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
           panic("cow map fail!");
         }
         // 这里应该还好减少对应的引用计数
-        // bkeeping[PA2BKI(pa)] --;
-        // if(bkeeping[PA2BKI(pa)] == 0) kfree((void *)pa);
-        bksubone(pa);
+        bkeeping[PA2BKI(pa)] --;
+        if(bkeeping[PA2BKI(pa)] == 0) kfree((void *)pa);
       }
     }
-    pa0 = walkaddr(pagetable, va0);
     n = PGSIZE - (dstva - va0);
     if(n > len)
       n = len;

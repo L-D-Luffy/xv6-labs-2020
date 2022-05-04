@@ -190,21 +190,30 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
       panic("uvmunmap: not mapped");
     if(PTE_FLAGS(*pte) == PTE_V)
       panic("uvmunmap: not a leaf");
-    uint64 pa = PTE2PA((*pte));
-    
-    // if(bkeeping[PA2BKI(pa)] == 0) kfree((void *)pa);
     if(do_free){
-      // bkeeping[PA2BKI(pa)] --;
-      // if(bkeeping[PA2BKI(pa)] == 0){
-      //   kfree((void *)pa);
-      // }
-      bksubone(pa);
-    } 
-    // else{
-    //   if((bkeeping[PA2BKI(pa)] == 0) && (*pte & PTE_RSW)){
-    //     kfree((void *)pa);
-    //   }
-    // }
+      if((*pte) & PTE_RSW){
+        uint64 pa = PTE2PA((*pte));
+        if(bkeeping[PA2BKI(pa)] > 1){
+          bkeeping[PA2BKI(pa)] --;
+        } else {
+          bkeeping[PA2BKI(pa)] = 0;
+          kfree((void *)pa);
+        }
+      } else {
+        uint64 pa = PTE2PA(*pte);
+        kfree((void*)pa);
+      }
+    } else {
+      if((*pte) & PTE_RSW){
+        uint64 pa = PTE2PA((*pte));
+        if(bkeeping[PA2BKI(pa)] > 1){
+          bkeeping[PA2BKI(pa)] --;
+        } else {
+          bkeeping[PA2BKI(pa)] = 0;
+          kfree((void *)pa);
+        }
+      }
+    }
     *pte = 0;
   }
 }
@@ -345,19 +354,15 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     //   goto err;
     *pte = *pte & (~PTE_W);
     *pte = *pte | PTE_RSW;
-    flags = flags & (~PTE_W);
-    flags = flags | PTE_RSW | PTE_R;
+    flags = flags & ~PTE_W;
+    flags = flags | PTE_RSW;
     flags = flags & (~PTE_V);
-    //printf("here!\n");
     if(mappages(new, i, PGSIZE, (uint64)pa, flags) != 0){
       // kfree(mem);
-      
       goto err;
     }
-    //printf("no here\n");
     // 映射成功了就添加引用计数
-    //bkeeping[PA2BKI(pa)] ++;
-    bkaddone(pa);
+    bkeeping[PA2BKI(pa)] ++;
   }
   return 0;
 
@@ -386,44 +391,37 @@ int
 copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 {
   uint64 n, va0, pa0;
-  //struct proc *p = myproc();
+  struct proc *p = myproc();
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
-  
-    pa0 = walkaddr(pagetable, va0);
-    if(pa0 == 0)
-      return -1;
-    pte_t *pte = walk(pagetable, va0, 0);
-    //printf("test here1");
-    if (pte == 0) return -1;
 
-    if ((*pte & PTE_W) == 0){
-      //printf("test here2");
-      if((*pte & PTE_RSW) == 0) return -1;
+    pte_t *pte = walk(p->pagetable, va0, 0);
+    if ((*pte & PTE_RSW) && !(*pte & PTE_W)){
       uint64 mem;
       if((mem = (uint64)kalloc()) == 0){
-        // p->killed = 1;
-        return 1;
+        p->killed = 1;
       } else {
         uint64 pa = PTE2PA(*pte);
-        //printf("test here3");
         memmove((void *)mem, (void *)pa, PGSIZE);
-        //printf("test here4");
         uint flags = PTE_FLAGS(*pte);
-        flags = flags | PTE_W | PTE_R;
+        flags = flags | PTE_W;
         // 防止remap
         *pte = (*pte) & (~PTE_V);
-        if (mappages(pagetable, va0, PGSIZE, (uint64)mem, flags) != 0){
+        if (mappages(p->pagetable, va0, PGSIZE, (uint64)mem, flags) != 0){
           // 应该不可能会映射失败
           panic("cow map fail!");
         }
         // 这里应该还好减少对应的引用计数
-        // bkeeping[PA2BKI(pa)] --;
-        // if(bkeeping[PA2BKI(pa)] == 0) kfree((void *)pa);
-        bksubone(pa);
+        bkeeping[PA2BKI(pa)] --;
       }
+
     }
+
+
+
     pa0 = walkaddr(pagetable, va0);
+    if(pa0 == 0)
+      return -1;
     n = PGSIZE - (dstva - va0);
     if(n > len)
       n = len;
@@ -449,7 +447,6 @@ copyin(pagetable_t pagetable, char *dst, uint64 srcva, uint64 len)
     pa0 = walkaddr(pagetable, va0);
     if(pa0 == 0)
       return -1;
-    
     n = PGSIZE - (srcva - va0);
     if(n > len)
       n = len;

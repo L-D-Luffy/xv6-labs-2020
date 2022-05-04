@@ -9,9 +9,7 @@
 #include "riscv.h"
 #include "defs.h"
 
-struct spinlock pgreflock;
-
-ushort bkeeping[NBK];
+ushort keepingbook[] 
 
 void freerange(void *pa_start, void *pa_end);
 
@@ -80,30 +78,7 @@ kalloc(void)
     kmem.freelist = r->next;
   release(&kmem.lock);
 
-  if(r){
+  if(r)
     memset((char*)r, 5, PGSIZE); // fill with junk
-    bkeeping[PA2BKI((void *)r)] = 1;
-  }
-  // 初始化引用数为1
-  
   return (void*)r;
-}
-
-void
-bkaddone(uint64 pa)
-{
-  acquire(&pgreflock);
-  bkeeping[PA2BKI(pa)] ++;
-  release(&pgreflock);
-}
-
-void
-bksubone(uint64 pa)
-{
-  acquire(&pgreflock);
-  bkeeping[PA2BKI(pa)] --;
-  if(bkeeping[PA2BKI(pa)] == 0){
-    kfree((void *)pa);
-  }
-  release(&pgreflock);
 }

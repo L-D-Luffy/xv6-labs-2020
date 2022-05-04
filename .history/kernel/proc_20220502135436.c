@@ -6,9 +6,6 @@
 #include "proc.h"
 #include "defs.h"
 
-extern ushort bkeeping[NBK];
-
-
 struct cpu cpus[NCPU];
 
 struct proc proc[NPROC];

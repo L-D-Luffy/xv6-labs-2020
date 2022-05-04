@@ -191,20 +191,45 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
     if(PTE_FLAGS(*pte) == PTE_V)
       panic("uvmunmap: not a leaf");
     uint64 pa = PTE2PA((*pte));
-    
-    // if(bkeeping[PA2BKI(pa)] == 0) kfree((void *)pa);
+    bkeeping[PA2BKI(pa)] --;
     if(do_free){
-      // bkeeping[PA2BKI(pa)] --;
-      // if(bkeeping[PA2BKI(pa)] == 0){
-      //   kfree((void *)pa);
-      // }
-      bksubone(pa);
-    } 
-    // else{
-    //   if((bkeeping[PA2BKI(pa)] == 0) && (*pte & PTE_RSW)){
-    //     kfree((void *)pa);
+      
+      if(bkeeping[PA2BKI(pa)] == 0){
+        kfree((void *)pa);
+      }
+    //   if((*pte) & PTE_RSW){
+    //     uint64 pa = PTE2PA((*pte));
+    //     if(bkeeping[PA2BKI(pa)] > 1){
+    //       //printf("no free b %d\n", bkeeping[PA2BKI(pa)]);
+    //       bkeeping[PA2BKI(pa)] --;
+    //       //printf("no free a %d\n", bkeeping[PA2BKI(pa)]);
+    //     } else {
+    //       //printf("free %d\n", bkeeping[PA2BKI(pa)]);
+    //       bkeeping[PA2BKI(pa)] = 0;
+    //       kfree((void *)pa);
+    //     }
+    //   } else {
+    //     uint64 pa = PTE2PA(*pte);
+    //     bkeeping[PA2BKI(pa)] = 0;
+    //     kfree((void*)pa);
     //   }
-    // }
+    // } else {
+    //   // printf("test..\n");
+    //   uint64 pa = PTE2PA((*pte));
+    //   if((*pte) & PTE_RSW){
+        
+    //     if(bkeeping[PA2BKI(pa)] > 1){
+    //       bkeeping[PA2BKI(pa)] --;
+    //     } 
+    //     else {
+    //       bkeeping[PA2BKI(pa)] = 0;
+    //       kfree((void *)pa);
+    //     }
+    //   }
+    //   else {
+    //     bkeeping[PA2BKI(pa)] --;
+    //   }
+    }
     *pte = 0;
   }
 }
@@ -356,8 +381,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     }
     //printf("no here\n");
     // 映射成功了就添加引用计数
-    //bkeeping[PA2BKI(pa)] ++;
-    bkaddone(pa);
+    bkeeping[PA2BKI(pa)] ++;
   }
   return 0;
 
@@ -402,7 +426,7 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
       if((*pte & PTE_RSW) == 0) return -1;
       uint64 mem;
       if((mem = (uint64)kalloc()) == 0){
-        // p->killed = 1;
+        //p->killed = 1;
         return 1;
       } else {
         uint64 pa = PTE2PA(*pte);
@@ -418,12 +442,10 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
           panic("cow map fail!");
         }
         // 这里应该还好减少对应的引用计数
-        // bkeeping[PA2BKI(pa)] --;
-        // if(bkeeping[PA2BKI(pa)] == 0) kfree((void *)pa);
-        bksubone(pa);
+        bkeeping[PA2BKI(pa)] --;
+        if(bkeeping[PA2BKI(pa)] == 0) kfree((void *)pa);
       }
     }
-    pa0 = walkaddr(pagetable, va0);
     n = PGSIZE - (dstva - va0);
     if(n > len)
       n = len;

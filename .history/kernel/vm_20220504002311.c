@@ -420,7 +420,7 @@ copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
         // 这里应该还好减少对应的引用计数
         // bkeeping[PA2BKI(pa)] --;
         // if(bkeeping[PA2BKI(pa)] == 0) kfree((void *)pa);
-        bksubone(pa);
+        
       }
     }
     pa0 = walkaddr(pagetable, va0);

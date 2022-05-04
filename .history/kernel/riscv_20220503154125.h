@@ -333,8 +333,7 @@ sfence_vma()
 #define PTE_U (1L << 4) // 1 -> user can access
 
 #define PTE_RSW (1L << 8)
-#define PA2BKI(pa) (PGROUNDDOWN((uint64)pa - KERNBASE) >> 12)
-#define NBK 32770
+#define PA2BKI(pa) (PGROUNDDOWN((uint64)pa)  )
 
 // shift a physical address to the right place for a PTE.
 #define PA2PTE(pa) ((((uint64)pa) >> 12) << 10)

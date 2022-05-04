@@ -71,7 +71,7 @@ usertrap(void)
     // ok
   } else if(r_scause() == 15){
     uint64 va = r_stval();
-    //va = PGROUNDDOWN(va);
+    va = PGROUNDDOWN(va);
     pte_t *pte = walk(p->pagetable, va, 0);
     if ((*pte & PTE_RSW)){
       uint64 mem;
@@ -81,26 +81,22 @@ usertrap(void)
         uint64 pa = PTE2PA(*pte);
         memmove((void *)mem, (void *)pa, PGSIZE);
         uint flags = PTE_FLAGS(*pte);
-        flags = flags | PTE_W | PTE_R;
+        flags = flags | PTE_W;
         // 防止remap
         *pte = (*pte) & (~PTE_V);
         //printf("here!\n");
         // uint64 nflag = PTE_FLAGS(*pte);
         // pte_t *pte1 = walk(p->pagetable, va, 0);
         //printf("%d\n", *pte1 & PTE_V);
-        va = PGROUNDDOWN(va);
         if (mappages(p->pagetable, va, PGSIZE, (uint64)mem, flags) != 0){
           // 应该不可能会映射失败
           p->killed = 1;
           kfree((void *)mem);
-          //panic("cow map fail!");
+          panic("cow map fail!");
         }
         // printf("no here\n");
-        // 这里应该还要减少对应的引用计数
-        // bkeeping[PA2BKI(pa)] --;
-        // if(bkeeping[PA2BKI(pa)] == 0) kfree((void *)pa);
-        bksubone(pa);
-        //printf("%d\n", bkeeping[PA2BKI(pa)]);
+        // 这里应该还好减少对应的引用计数
+        bkeeping[PA2BKI(pa)] --;
       }
 
     } else {

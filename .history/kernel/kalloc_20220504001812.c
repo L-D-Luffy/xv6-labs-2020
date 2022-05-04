@@ -94,16 +94,5 @@ bkaddone(uint64 pa)
 {
   acquire(&pgreflock);
   bkeeping[PA2BKI(pa)] ++;
-  release(&pgreflock);
-}
-
-void
-bksubone(uint64 pa)
-{
-  acquire(&pgreflock);
-  bkeeping[PA2BKI(pa)] --;
-  if(bkeeping[PA2BKI(pa)] == 0){
-    kfree((void *)pa);
-  }
-  release(&pgreflock);
+  
 }
