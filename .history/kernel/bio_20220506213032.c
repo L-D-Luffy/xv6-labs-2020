@@ -97,7 +97,6 @@ bread(uint dev, uint blockno)
   // bget()中即会去获取b的睡眠锁
   b = bget(dev, blockno);
   if(!b->valid) {
-    // 通过标志位来判断是读还是写
     virtio_disk_rw(b, 0);
     b->valid = 1;
   }

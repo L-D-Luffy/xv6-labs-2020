@@ -43,7 +43,6 @@ binit(void)
   // Create linked list of buffers
   bcache.head.prev = &bcache.head;
   bcache.head.next = &bcache.head;
-  // 双向链表头结点插入
   for(b = bcache.buf; b < bcache.buf+NBUF; b++){
     b->next = bcache.head.next;
     b->prev = &bcache.head;
@@ -94,10 +93,9 @@ struct buf*
 bread(uint dev, uint blockno)
 {
   struct buf *b;
-  // bget()中即会去获取b的睡眠锁
+
   b = bget(dev, blockno);
   if(!b->valid) {
-    // 通过标志位来判断是读还是写
     virtio_disk_rw(b, 0);
     b->valid = 1;
   }

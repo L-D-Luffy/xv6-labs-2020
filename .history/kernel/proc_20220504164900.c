@@ -513,7 +513,6 @@ sched(void)
   if(intr_get())
     panic("sched interruptible");
 
-  // intena应该是被存到某个寄存器里面的吧
   intena = mycpu()->intena;
   swtch(&p->context, &mycpu()->context);
   mycpu()->intena = intena;

@@ -54,10 +54,10 @@ kfree(void *pa)
   // Fill with junk to catch dangling refs.
   memset(pa, 1, PGSIZE);
 
-  r = (struct run*)pa; // 强制类型转换其实也改变了pa以为的、它指向的物理结构
+  r = (struct run*)pa;
 
   acquire(&kmem.lock);
-  r->next = kmem.freelist; // r->next == (*r).next, 所以是在这一步把链表结构存空闲物理块里面了
+  r->next = kmem.freelist;
   kmem.freelist = r;
   release(&kmem.lock);
 }

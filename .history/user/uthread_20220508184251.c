@@ -41,8 +41,7 @@ struct thread {
 };
 struct thread all_thread[MAX_THREAD];
 struct thread *current_thread;
-//
-extern void thread_switch(struct threadcontext *, struct threadcontext *);
+extern void thread_switch(uint64, uint64);
               
 void 
 thread_init(void)
@@ -104,8 +103,8 @@ thread_create(void (*func)())
   t->state = RUNNABLE;
   // YOUR CODE HERE
   memset(&t->threadcontext, 0, sizeof(t->threadcontext));
-  t->threadcontext.sp = (uint64)(t->stack + STACK_SIZE);
-  t->threadcontext.ra = (uint64)func;
+  t->threadcontext.sp = t->stack + STACK_SIZE;
+  t->threadcontext.ra = func;
 }
 
 void 
