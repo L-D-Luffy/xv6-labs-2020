@@ -25,9 +25,6 @@
 
 #define BUCKETS 13
 
-extern uint ticks;
-
-
 struct {
   // 用于驱逐时顺序化
   struct spinlock lock;
@@ -46,12 +43,11 @@ struct {
 void
 binit(void)
 {
-  // struct buf *b;
+  struct buf *b;
   char name[9];
   for (int i = 0; i < BUCKETS; i++) {
     snprintf(name, 9, "bcache_%d", i);
     initlock(&bcache.buclocks[i], name);
-    bcache.hashhead[i].next = 0;
   }
 
   for (int i = 0; i < NBUF; i++) {
@@ -63,7 +59,7 @@ binit(void)
     // bcache.buf[i].btick = 0;
   }
 
-  initlock(&bcache.lock, "bcache");
+  // initlock(&bcache.lock, "bcache");
 
   // Create linked list of buffers
   // bcache.head.prev = &bcache.head;
@@ -98,7 +94,7 @@ bget(uint dev, uint blockno)
   // }
 
   //
-  uint hashid = blockno % BUCKETS;
+  int hashid = blockno % BUCKETS;
   acquire(&bcache.buclocks[hashid]);
 
   for(b = bcache.hashhead[hashid].next; b; b = b->next){
@@ -119,7 +115,6 @@ bget(uint dev, uint blockno)
     if (b->dev == dev && b->blockno == blockno){
       b->refcnt++;
       release(&bcache.buclocks[hashid]);
-      release(&bcache.lock);
       acquiresleep(&b->lock);
       return b;
     }
@@ -128,73 +123,49 @@ bget(uint dev, uint blockno)
   // new not cached
   int find = -1;
   uint min_btick = 0;
-  struct buf *evicbuf = 0;
-  int norelse = -1;
-  //int oldevicid = -1;
+  struct buf *evicbuf;
+  int newevicid = -1;
+  int oldevicid = -1;
   for(int i = 0; i < BUCKETS; i++){
     // if (i == hashid) continue;
     acquire(&bcache.buclocks[i]);
-    int nevid = 0;
     for(b = bcache.hashhead[i].next; b; b = b->next){
-      
       if (b->refcnt == 0 && (min_btick == 0 || min_btick > b->btick)){
         // 如果找到有，就打标记，不用panic
         find = 1;
         min_btick = b->btick;
         evicbuf = b;
-        nevid = 1;
+        newevicid = i;
       }
     }
-    if (!nevid) release(&bcache.buclocks[i]);
-    else {
-      if (norelse != -1) {
-        release(&bcache.buclocks[norelse]);
-        norelse = i;
-      } else {
-        norelse = i;
-      }
+    if(newevicid != oldevicid && oldevicid != -1){
+      release(&bcache.buclocks[oldevicid]);
     }
-    // if (newevicid == -1 && oldevicid == -1){
-    //   release(&bcache.buclocks[i]);
-    // }
-    // else if(newevicid != -1 && oldevicid == -1){
-    //   // release(&bcache.buclocks[oldevicid]);
-    // } else if(newevicid != -1 && oldevicid != -1 && newevicid == oldevicid){
-
-    // } else if(newevicid != -1 && oldevicid != -1 && newevicid != oldevicid){
-    //   release(&bcache.buclocks[oldevicid]);
-    // }
-    //oldevicid = newevicid;
+    oldevicid = newevicid;
   }
   // 此时，还持有选中的那个buf的链表的锁
-  if(!evicbuf || find == -1){
+  if(find == -1){
     panic("bget: no buffers");
   }
-  evicbuf->dev = dev;
-  evicbuf->blockno = blockno;
-  evicbuf->valid = 0;
-  evicbuf->refcnt = 1;
-  // 判断是否是同一个链表
-  if (norelse != hashid){
-    // acquire(&bcache.buclocks[norelse]);
-    acquire(&bcache.buclocks[hashid]);
-    // 在原来的链表中删除
-    evicbuf->prev->next = evicbuf->next;
-    if (evicbuf->next) evicbuf->next->prev = evicbuf->prev;
-    release(&bcache.buclocks[norelse]);
-    // 添加到新链表
-    evicbuf->next = bcache.hashhead[hashid].next;
-    evicbuf->prev = &bcache.hashhead[hashid];
-    if (bcache.hashhead[hashid].next) bcache.hashhead[hashid].next->prev = evicbuf;
-    bcache.hashhead[hashid].next = evicbuf;
-    release(&bcache.buclocks[hashid]);
-    acquiresleep(&evicbuf->lock);
-  } else {
-    release(&bcache.buclocks[hashid]);
-    acquiresleep(&evicbuf->lock);
-  }
-  release(&bcache.lock);
-  return evicbuf;
+  b->dev = dev;
+  b->blockno = blockno;
+  b->valid = 0;
+  b->refcnt = 1;
+  // 此时，持有两个锁
+  acquire(&bcache.buclocks[hashid]);
+  // 在原来的链表中删除
+  evicbuf->prev->next = evicbuf->next;
+  if (evicbuf->next) evicbuf->next->prev = evicbuf->prev;
+  release(&bcache.buclocks[newevicid]);
+
+  evicbuf->next = bcache.hashhead[hashid].next;
+  evicbuf->prev = &bcache.hashhead[hashid];
+  if (bcache.hashhead[hashid].next) bcache.hashhead[hashid].next->prev = evicbuf;
+  bcache.hashhead[hashid].next = evicbuf;
+
+
+  
+
   // // Not cached.
   // // Recycle the least recently used (LRU) unused buffer.
   // for(b = bcache.head.prev; b != &bcache.head; b = b->prev){
@@ -243,37 +214,34 @@ brelse(struct buf *b)
     panic("brelse");
 
   releasesleep(&b->lock);
-  uint n = b->blockno % BUCKETS;
-  acquire(&bcache.buclocks[n]);
+
+  acquire(&bcache.lock);
   b->refcnt--;
   if (b->refcnt == 0) {
     // no one is waiting for it.
-    // b->next->prev = b->prev;
-    // b->prev->next = b->next;
-    // b->next = bcache.head.next;
-    // b->prev = &bcache.head;
-    // bcache.head.next->prev = b;
-    // bcache.head.next = b;
-    b->btick = ticks;
+    b->next->prev = b->prev;
+    b->prev->next = b->next;
+    b->next = bcache.head.next;
+    b->prev = &bcache.head;
+    bcache.head.next->prev = b;
+    bcache.head.next = b;
   }
   
-  release(&bcache.buclocks[n]);
+  release(&bcache.lock);
 }
 
 void
 bpin(struct buf *b) {
-  uint n = b->blockno % BUCKETS; 
-  acquire(&bcache.buclocks[n]);
+  acquire(&bcache.lock);
   b->refcnt++;
-  release(&bcache.buclocks[n]);
+  release(&bcache.lock);
 }
 
 void
 bunpin(struct buf *b) {
-  uint n = b->blockno % BUCKETS; 
-  acquire(&bcache.buclocks[n]);
+  acquire(&bcache.lock);
   b->refcnt--;
-  release(&bcache.buclocks[n]);
+  release(&bcache.lock);
 }
 
 

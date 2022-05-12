@@ -82,7 +82,7 @@ kalloc(void)
 
   push_off();
   int cid = cpuid();
-  pop_off();
+  
 
   acquire(&kmem[cid].lock);
   r = kmem[cid].freelist;
@@ -109,7 +109,7 @@ kalloc(void)
   if (r)
     kmem[cid].freelist = r->next;
   release(&kmem[cid].lock);
-  
+  pop_off();
   if(r)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;

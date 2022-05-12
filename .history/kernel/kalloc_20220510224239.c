@@ -27,10 +27,8 @@ struct {
 void
 kinit()
 {
-  char name[8];
   for (int i = 0; i < NCPU; i++) {
-    snprintf(name, 12, "kmem_c%d", i);
-    initlock(&kmem[i].lock, name);
+    initlock(&kmem[i].lock, "kmem");
   }
   // initlock(&kmem.lock, "kmem");
   freerange(end, (void*)PHYSTOP);
@@ -86,30 +84,36 @@ kalloc(void)
 
   acquire(&kmem[cid].lock);
   r = kmem[cid].freelist;
-  if (!r) {
-    int npage = 128;
+  if(r) {
+    kmem[cid].freelist = r->next;
+  } else {
     for (int i = 0; i < NCPU; i++) {
-      if (i == cid) continue;
-      acquire(&kmem[i].lock);
-      if (!kmem[i].freelist) {
-        release(&kmem[i].lock);
-        continue;
-      }
-      while (npage--) {
-        if (!kmem[i].freelist) break;
+      if (cid == i) continue;
+      else {
+        acquire(&kmem[i].lock);
         struct run *nr = kmem[i].freelist;
-        kmem[i].freelist = nr->next;
-        nr->next = kmem[cid].freelist;
-        kmem[cid].freelist = nr;
+        if (!nr) {
+          release(&kmem[i].lock);
+          continue;
+        } else {
+          int npage = 64;
+          while (npage--) {
+
+            kmem[i].freelist = nr->next;
+            nr->next = kmem[cid].freelist;
+            kmem[cid].freelist = nr;
+            nr = kmem[i].freelist;
+            if (!nr) break;
+          }
+          release(&kmem[i].lock);
+          break;
+        }
       }
-      release(&kmem[i].lock);
     }
   }
   r = kmem[cid].freelist;
-  if (r)
-    kmem[cid].freelist = r->next;
+  if (r) kmem[cid].freelist = r->next;
   release(&kmem[cid].lock);
-  
   if(r)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;

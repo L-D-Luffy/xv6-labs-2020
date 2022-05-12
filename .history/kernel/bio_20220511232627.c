@@ -51,7 +51,6 @@ binit(void)
   for (int i = 0; i < BUCKETS; i++) {
     snprintf(name, 9, "bcache_%d", i);
     initlock(&bcache.buclocks[i], name);
-    bcache.hashhead[i].next = 0;
   }
 
   for (int i = 0; i < NBUF; i++) {
@@ -98,7 +97,7 @@ bget(uint dev, uint blockno)
   // }
 
   //
-  uint hashid = blockno % BUCKETS;
+  int hashid = blockno % BUCKETS;
   acquire(&bcache.buclocks[hashid]);
 
   for(b = bcache.hashhead[hashid].next; b; b = b->next){
@@ -129,42 +128,24 @@ bget(uint dev, uint blockno)
   int find = -1;
   uint min_btick = 0;
   struct buf *evicbuf = 0;
-  int norelse = -1;
-  //int oldevicid = -1;
+  int newevicid = -1;
+  int oldevicid = -1;
   for(int i = 0; i < BUCKETS; i++){
     // if (i == hashid) continue;
     acquire(&bcache.buclocks[i]);
-    int nevid = 0;
     for(b = bcache.hashhead[i].next; b; b = b->next){
-      
       if (b->refcnt == 0 && (min_btick == 0 || min_btick > b->btick)){
         // 如果找到有，就打标记，不用panic
         find = 1;
         min_btick = b->btick;
         evicbuf = b;
-        nevid = 1;
+        newevicid = i;
       }
     }
-    if (!nevid) release(&bcache.buclocks[i]);
-    else {
-      if (norelse != -1) {
-        release(&bcache.buclocks[norelse]);
-        norelse = i;
-      } else {
-        norelse = i;
-      }
+    if(newevicid != oldevicid && oldevicid != -1){
+      release(&bcache.buclocks[oldevicid]);
     }
-    // if (newevicid == -1 && oldevicid == -1){
-    //   release(&bcache.buclocks[i]);
-    // }
-    // else if(newevicid != -1 && oldevicid == -1){
-    //   // release(&bcache.buclocks[oldevicid]);
-    // } else if(newevicid != -1 && oldevicid != -1 && newevicid == oldevicid){
-
-    // } else if(newevicid != -1 && oldevicid != -1 && newevicid != oldevicid){
-    //   release(&bcache.buclocks[oldevicid]);
-    // }
-    //oldevicid = newevicid;
+    oldevicid = newevicid;
   }
   // 此时，还持有选中的那个buf的链表的锁
   if(!evicbuf || find == -1){
@@ -175,13 +156,12 @@ bget(uint dev, uint blockno)
   evicbuf->valid = 0;
   evicbuf->refcnt = 1;
   // 判断是否是同一个链表
-  if (norelse != hashid){
-    // acquire(&bcache.buclocks[norelse]);
+  if (newevicid != hashid){
     acquire(&bcache.buclocks[hashid]);
     // 在原来的链表中删除
     evicbuf->prev->next = evicbuf->next;
     if (evicbuf->next) evicbuf->next->prev = evicbuf->prev;
-    release(&bcache.buclocks[norelse]);
+    release(&bcache.buclocks[newevicid]);
     // 添加到新链表
     evicbuf->next = bcache.hashhead[hashid].next;
     evicbuf->prev = &bcache.hashhead[hashid];

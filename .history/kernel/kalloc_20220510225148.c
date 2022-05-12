@@ -27,10 +27,8 @@ struct {
 void
 kinit()
 {
-  char name[8];
   for (int i = 0; i < NCPU; i++) {
-    snprintf(name, 12, "kmem_c%d", i);
-    initlock(&kmem[i].lock, name);
+    initlock(&kmem[i].lock, "kmem");
   }
   // initlock(&kmem.lock, "kmem");
   freerange(end, (void*)PHYSTOP);
@@ -109,7 +107,6 @@ kalloc(void)
   if (r)
     kmem[cid].freelist = r->next;
   release(&kmem[cid].lock);
-  
   if(r)
     memset((char*)r, 5, PGSIZE); // fill with junk
   return (void*)r;
