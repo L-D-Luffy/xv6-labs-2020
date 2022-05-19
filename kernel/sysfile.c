@@ -484,3 +484,108 @@ sys_pipe(void)
   }
   return 0;
 }
+
+
+uint64
+sys_mmap(void)
+{
+  //printf("mmap begin\n");
+  // 设置使用到的变量
+  uint64 addr;
+  int length;
+  int prot;
+  int flags;
+  int offset;
+  struct file *f;
+  // 获取参数
+  if(argaddr(0, &addr) < 0 || argint(1, &length) < 0 || argint(2, &prot) < 0 || 
+                  argint(3, &flags) < 0 || argfd(4, 0, &f) || argint(5, &offset)){
+    return -1;
+  }
+  if ((!f->writable) && (prot & PROT_WRITE) && !(flags & MAP_PRIVATE)) return -1;
+  begin_op();
+  // 找到一个空的vma
+  struct vma *v = myproc()->vma;
+  struct vma *vv;
+  //printf("mmap begin1\n");
+  int i;
+  for (i = 0; i < 16; i++){
+    if(v[i].valid == 0){
+      v[i].valid = 1;
+      vv = &v[i];
+      break;
+    }
+  }
+  //printf("mmap begin2\n");
+  if (i == 16){
+    end_op();
+    return -1;
+  }
+  // 保存对应的信息
+  uint64 sz = myproc()->sz;
+  vv->addr = sz;
+  vv->f = f;
+  vv->flags = flags;
+  vv->length = length;
+  vv->offset = 0;
+  vv->prot = prot;
+  //printf("mmap begin3\n");
+  filedup(f);
+  //printf("mmap begin4\n");
+  myproc()->sz = sz + length;
+  //printf("mmap begin6\n");
+  end_op();
+  //printf("mmap end, addr: %p\n", vv->addr);
+  return vv->addr;
+
+  // printf("mmap end\n");
+}
+
+uint64
+sys_munmap(void)
+{
+  // printf("munmap begin\n");
+  uint64 addr;
+  int length;
+  if (argaddr(0, &addr) < 0 || argint(1, &length) < 0){
+    return -1;
+  }
+  begin_op();
+
+  struct vma *v = myproc()->vma;
+  struct vma *vv;
+  int i;
+  for (i = 0; i < 16; i++){
+    if (v[i].valid == 1){
+      if (v[i].addr <= addr && (v[i].addr + v[i].length) > addr){
+        vv = &v[i];
+        break;
+      }
+    }
+  }
+  if (i == 16){
+    end_op();
+    return -1;
+  }
+  // 必要时写回文件
+  if (vv->flags & MAP_SHARED){
+    filewrite(vv->f, addr, length);
+  }
+
+  if (addr == vv->addr && length == vv->length){
+    uvmunmap(myproc()->pagetable, addr, length / PGSIZE, 1);
+    fileclose(vv->f);
+    vv->valid = 0;
+  } else if (addr == vv->addr){
+    uvmunmap(myproc()->pagetable, addr, length / PGSIZE, 1);
+    vv->addr += length;
+    vv->length -= length;
+  } else if (addr + length == vv->addr + vv->length){
+    uvmunmap(myproc()->pagetable, addr, length / PGSIZE, 1);
+    vv->length -= length;
+  } 
+  end_op();
+  // printf("munmap end\n");
+
+  return 0;
+}
